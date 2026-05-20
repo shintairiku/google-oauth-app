@@ -1,0 +1,132 @@
+:root {
+  color-scheme: light;
+  --bg: #f3f0e8;
+  --panel: rgba(255, 255, 255, 0.78);
+  --line: rgba(40, 30, 10, 0.12);
+  --text: #1d1a14;
+  --muted: #5f594d;
+  --accent: #0f766e;
+  --accent-soft: #d7f3ef;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
+  color: var(--text);
+  background: radial-gradient(circle at top left, #fff7d6 0, transparent 28%),
+    radial-gradient(circle at bottom right, #dff6f1 0, transparent 24%),
+    linear-gradient(180deg, #f8f5ec 0%, var(--bg) 100%);
+}
+
+a {
+  color: var(--accent);
+}
+
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+
+.hero {
+  padding: 24px 0 40px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2.6rem, 6vw, 4.8rem);
+  line-height: 1.05;
+}
+
+.lead {
+  max-width: 680px;
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1.8;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.card {
+  min-height: 220px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 18px 60px rgba(70, 52, 18, 0.08);
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 1.3rem;
+}
+
+.card p {
+  margin: 0 0 16px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.status {
+  background: linear-gradient(180deg, rgba(215, 243, 239, 0.9), rgba(255, 255, 255, 0.88));
+}
+
+.status dl {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.status div {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.status dt {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.status dd {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page {
+    padding: 32px 16px 56px;
+  }
+}

@@ -1,0 +1,26 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: web-app-standard-backend
+    environment:
+      APP_NAME: Web App Standard API
+      APP_ENV: development
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: web-app-standard-frontend
+    depends_on:
+      - backend
+    environment:
+      PORT: 3000
+      BACKEND_INTERNAL_URL: http://backend:8000
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+

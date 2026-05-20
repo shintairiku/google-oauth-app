@@ -1,0 +1,38 @@
+[project]
+name = "web-app-standard-backend"
+version = "0.1.0"
+description = "FastAPI backend for the web-app-standard template"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115.0,<1.0.0",
+  "pydantic-settings>=2.4.0,<3.0.0",
+  "uvicorn[standard]>=0.30.0,<1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.27.0,<1.0.0",
+  "pytest>=8.3.0,<9.0.0",
+  "ruff>=0.11.0,<1.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
