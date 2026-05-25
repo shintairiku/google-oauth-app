@@ -1,434 +1,206 @@
-# web-app-standard
+# Google OAuth App
 
-`FastAPI` + `Next.js` を前提にした、Web アプリ開発用の基盤リポジトリである。  
-`backend` と `frontend` を分けたモノレポ構成を採用し、最小限の API、画面、Docker 起動構成を含んでいる。
+GA4 / Search Console の読み取り権限を Google OAuth で取得し、`refresh_token` を暗号化して Supabase に保存するためのバックエンドです。
 
-## 最初にやること
+このリポジトリの初期目的は、OAuth 認証フローを完了して、継続取得に必要な `refresh_token` を安全に保存することです。保存済み token を使った GA4 / Search Console データ取得、接続解除 API、Google token revoke、管理画面は初期実装には含めていません。
 
-最初の確認は Docker で行うのが分かりやすい。
+## できること
 
-1. `docker compose up --build` を実行する
-2. `http://localhost:3000` を開いてフロントエンドが表示されることを確認する
-3. `http://localhost:8000/docs` を開いて FastAPI の Swagger UI が表示されることを確認する
-4. 必要なら `http://localhost:8000/api/health` を開いてヘルスチェックを確認する
+- Google OAuth の認証開始 URL を発行する
+- callback で `code` / `state` を受け取る
+- `state` を検証する
+- Google token endpoint で `code` を token に交換する
+- `refresh_token` を暗号化する
+- 暗号化済み `refresh_token` を Supabase に保存する
+- 成功・失敗画面を backend から HTML で返す
+- `.env` の暗号化済み token を使って、手動で Google API 疎通確認を行う
 
-まずはこの状態を作れれば、基盤としては正常に動いていると判断できる。
-
-## 全体構成
-
-このリポジトリは、アプリケーション開発を始めるための共通土台として使うものである。  
-構成の中心は次の 4 つである。
-
-- `frontend`
-  Next.js によるフロントエンドである。画面表示と API 呼び出しを担当する。
-- `backend`
-  FastAPI によるバックエンドである。API 提供と業務ロジックの配置先である。
-- `supabase`
-  Supabase CLI を前提としたデータベース migration 基盤である。ローカル DB 設定、migration、seed を管理する。
-- `.github/workflows`
-  GitHub Actions による最小 CI を置く。backend の lint / test、frontend の lint / build、migration 整合性確認を担う。
-
-技術前提は以下である。
-
-- バックエンドは `FastAPI`
-- フロントエンドは `Next.js`
-- Python の環境管理は `uv`
-- JavaScript の環境管理は `bun`
-- データベース基盤は `Supabase`
-- 全体起動は `Docker Compose`
-
-最小構成として、以下を含んでいる。
-
-- FastAPI の最小 API
-- `/api/health` のヘルスチェック
-- Next.js の最小トップページ
-- フロントエンドからバックエンドの疎通を確認する表示
-- GitHub Actions による最小 CI
-- PR テンプレート
-- `ruff` と `biome` による lint
-- Supabase を前提にした最小のデータベース基盤
-
-## 役割
-
-### `frontend`
-
-- 画面表示を担う
-- `backend` の API を呼び出す
-- `frontend/src/app` を起点にページを構成する
-- `frontend/src/features` に画面ごとの機能を追加していく
-
-### `backend`
-
-- API を提供する
-- 業務ロジックを保持する
-- `backend/app/api` にエンドポイントを置く
-- `backend/app/domain` と `backend/app/services` に業務知識を追加していく
-
-### `supabase`
-
-- ローカル Supabase の設定を持つ
-- migration と seed を管理する
-- アプリケーション固有の DB 変更を SQL として積み上げる
-
-### `.github/workflows`
-
-- 基盤として最低限必要な CI を持つ
-- 開発初期段階で build / test / migration の破綻を早期に検知する
-
-## 起動方法
-
-### Docker で起動する
-
-前提:
-
-- Docker
-- Docker Compose
-
-リポジトリのルートで以下を実行する。
-
-```bash
-docker compose up --build
-```
-
-起動後の確認先:
-
-- Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:8000`
-- Swagger UI: `http://localhost:8000/docs`
-- Health Check: `http://localhost:8000/api/health`
-
-停止:
-
-```bash
-docker compose down
-```
-
-Dockerfile や依存関係を変更した場合は、再度 `docker compose up --build` を実行する。
-
-補足:
-
-- `docker compose up --build` で起動するのは `frontend` と `backend` である
-- `Supabase` のローカル DB は別に `make db-start` で起動する
-
-この分離にしている理由は、Supabase CLI 自体が内部で Docker を使って複数のサービスを管理するためである。  
-`docker-compose.yml` に無理に同居させることも可能ではあるが、CLI 前提の migration 運用とぶつかりやすいため、この基盤では分けている。
-
-### ローカルで個別起動する
-
-Docker を使わずに個別起動したい場合は、ルートの [Makefile](/home/takagi/web-app-standard/Makefile) を使う。  
-`make frontend` と `make backend` はどちらもフォアグラウンドで起動するため、ログをそのまま確認しやすい構成である。
-
-前提:
-
-- `uv`
-- `bun`
-
-初回セットアップ:
-
-```bash
-make install-backend
-make install-frontend
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env.local
-```
-
-起動:
-
-```bash
-make backend
-make frontend
-```
-
-`make backend` と `make frontend` は別ターミナルで実行する。  
-どちらもフォアグラウンドで起動するため、1つ目のコマンドを実行した端末はそのまま占有される。
-
-利用できる主なコマンド:
-
-- `make backend`
-  FastAPI をローカル起動する
-- `make frontend`
-  Next.js をローカル起動する
-- `make install-backend`
-  `uv sync --extra dev` でバックエンド依存を同期する
-- `make install-frontend`
-  `bun install` でフロントエンド依存をインストールする
-- `make test-backend`
-  バックエンドテストを実行する
-- `make build-frontend`
-  フロントエンドをビルドする
-- `make lint-backend`
-  `ruff` でバックエンドを lint する
-- `make lint-frontend`
-  `biome` でフロントエンドを lint する
-- `make lint`
-  backend / frontend の lint をまとめて実行する
-- `make db-start`
-  Supabase のローカルスタックを起動する
-- `make db-stop`
-  Supabase のローカルスタックを停止する
-- `make db-reset`
-  migration と seed をローカル DB に再適用する
-- `make db-lint`
-  ローカル DB の schema を lint する
-- `make db-new name=...`
-  新しい migration ファイルを作成する
-
-`make db-*` は Supabase CLI を内部で呼び出し、Docker を使ってローカル DB 環境を扱う。  
-初回はイメージ取得のため時間がかかることがある。
-
-## このリポジトリの使い方
-
-このリポジトリは、個別のアプリケーションを作るための出発点として、Template Repository として使う想定である。
-
-新しいアプリケーションごとに独立した履歴で始めたい場合は、GitHub の Template Repository として使うのが適している。
-
-流れ:
-
-1. このリポジトリを GitHub で Template Repository に設定する
-2. `Use this template` から新しいリポジトリを作成する
-3. 作成された新しいリポジトリ側で、要件に応じた実装を追加する
-
-向いているケース:
-
-- アプリケーションごとに履歴を完全に分けたい
-- この基盤リポジトリ自体にはアプリ固有の変更を混ぜたくない
-- 毎回クリーンな初期状態から始めたい
-
-## CI と PR テンプレート
-
-GitHub 用の最小構成として、以下を含んでいる。
-
-- `.github/workflows/ci.yml`
-  `backend` の lint / test、`frontend` の lint / build、Supabase migration の整合性確認を実行する
-- `.github/pull_request_template.md`
-  PR 作成時の記入項目を揃える
-
-このため、Template Repository として利用した場合でも、新しく作成したリポジトリには最初から CI と PR テンプレートが入る。
-
-## Docker 構成
-
-全体の起動定義は [docker-compose.yml](/home/takagi/web-app-standard/docker-compose.yml) にある。
-
-### `frontend`
-
-- `frontend/Dockerfile` から作成されるコンテナ
-- `bun` を使って Next.js アプリを起動する
-- ホストの `3000` 番ポートで公開する
-
-役割:
-
-- 画面表示
-- バックエンド API の呼び出し
-
-### `backend`
-
-- `backend/Dockerfile` から作成されるコンテナ
-- `uv` を使って FastAPI アプリを起動する
-- ホストの `8000` 番ポートで公開する
-
-役割:
-
-- API 提供
-- 業務ロジックの配置先
-- 今後の DB や外部サービス連携の中心
-
-### サービス間通信
-
-- ブラウザからは `http://localhost:3000` と `http://localhost:8000` を利用する
-- `frontend` コンテナから `backend` へは `http://backend:8000` で接続する
-
-つまり、ブラウザから見る URL と、コンテナ同士で通信する URL は異なる。
-
-## データベース構成
-
-データベース基盤として `Supabase` を前提にしている。  
-ただし、このリポジトリにはアプリケーション固有のテーブル設計は含めず、あくまで migration とローカル開発の型だけを置く方針である。
-
-ローカル DB 運用の基本:
-
-- `supabase/config.toml`
-  ローカル Supabase の設定
-- `supabase/migrations/`
-  マイグレーション SQL の配置先
-- `supabase/seed.sql`
-  ローカル用 seed データの配置先
-
-基本的な流れ:
-
-1. `make db-start` で Supabase ローカル環境を起動する
-2. `make db-new name=...` で migration を作成する
-3. `make db-reset` で migration を適用し直す
-4. `make db-lint` で schema の lint を確認する
-
-`db-start` `db-stop` `db-reset` `db-lint` は、内部的には Supabase CLI と Docker を利用する。
-
-## ローカルから本番へ反映する流れ
-
-Supabase の DB 変更は、基本的には次の流れで扱う。
-
-1. ローカルで `make db-start` を実行する
-2. `supabase/migrations/` に migration を追加する
-3. `make db-reset` と `make db-lint` でローカル検証する
-4. 変更を GitHub に push する
-5. CI で migration 整合性を確認する
-6. 本番反映時は、対象の Supabase プロジェクトに対して `supabase db push` を実行する
-
-ローカルからリモート Supabase へ反映する前提コマンドは以下である。
-
-```bash
-supabase login
-supabase link --project-ref <PROJECT_ID>
-supabase db push
-```
-
-`PROJECT_ID` は Supabase ダッシュボードの URL から確認できる。  
-本番環境への反映は、ローカル端末から手動で実行するより、GitHub Actions などの CI/CD パイプラインから実行する方が安全である。
-
-## ディレクトリ構成
+## 構成
 
 ```text
-.
-├── backend/
-│   ├── .python-version
-│   ├── Dockerfile
-│   ├── app/
-│   │   ├── api/
-│   │   ├── core/
-│   │   ├── domain/
-│   │   ├── infrastructure/
-│   │   ├── schemas/
-│   │   └── services/
-│   ├── pyproject.toml
-│   ├── uv.lock
-│   └── tests/
-├── .github/
-│   └── workflows/
-├── docs/
-├── supabase/
-│   ├── config.toml
-│   ├── migrations/
-│   ├── seed.sql
-│   └── README.md
-├── frontend/
-│   ├── Dockerfile
-│   ├── .env.example
-│   ├── biome.json
-│   ├── bun.lock
-│   ├── package.json
-│   ├── public/
-│   ├── src/
-│   │   ├── app/
-│   │   ├── components/
-│   │   ├── features/
-│   │   ├── lib/
-│   │   └── styles/
-│   └── tests/
-├── docker-compose.yml
-├── Makefile
-├── .editorconfig
-├── progress.md
-├── task.md
-└── README.md
+backend/
+  app/
+    api/routes/google_oauth.py          OAuth開始API / callback API / 完了画面
+    services/google_oauth_service.py    OAuth処理の中心
+    services/token_cipher.py            refresh tokenの暗号化・復号
+    infrastructure/google_oauth_client.py
+                                        Google OAuth URL生成 / token交換
+    infrastructure/supabase_oauth_repository.py
+                                        Supabaseへのstate/token保存
+    core/config.py                      環境変数設定
+  scripts/check_google_oauth_connection.py
+                                        手動疎通確認スクリプト
+  tests/                                backendテスト
+
+supabase/
+  migrations/                           OAuth保存用テーブル定義
+
+docs/
+  google-oauth-implementation-spec.md   実装仕様
+  google-oauth-design.md                詳細設計
+  google-oauth-ga4-search-console.md    背景説明
 ```
 
-## 主な配置先
+`frontend/` はテンプレート由来の最小 Next.js アプリです。現在の OAuth 完了画面は frontend ではなく backend が直接返します。
 
-### `backend/`
+## 主なAPI
 
-FastAPI 側の実装を配置する。
+```text
+GET /api/health
+GET /api/oauth/google/start
+GET /api/oauth/google/callback
+```
 
-- `backend/app/main.py`
-  FastAPI アプリのエントリーポイント
-- `backend/app/api`
-  ルーター、エンドポイント
-- `backend/app/core`
-  設定、共通処理
-- `backend/app/domain`
-  ドメイン知識、業務ルール
-- `backend/app/services`
-  ユースケース、アプリケーションサービス
-- `backend/app/infrastructure`
-  DB、外部サービス連携
-- `backend/app/schemas`
-  リクエスト、レスポンスの型
-- `backend/tests`
-  バックエンドテスト
-- `backend/.python-version`
-  利用する Python 系統の基準
-- `backend/uv.lock`
-  `uv` 用のロックファイル
+`/api/oauth/google/start` にアクセスすると Google 同意画面へリダイレクトします。認証後、Google から `/api/oauth/google/callback` に戻り、token交換、暗号化、Supabase保存を行います。
 
-### `frontend/`
+## 保存先
 
-Next.js 側の実装を配置する。
+Supabase に次のテーブルを作ります。
 
-- `frontend/src/app`
-  ページ、レイアウト、ルーティング
-- `frontend/src/components`
-  再利用 UI
-- `frontend/src/features`
-  機能単位の UI とロジック
-- `frontend/src/lib`
-  共通関数、API クライアント
-- `frontend/src/styles`
-  スタイル定義
-- `frontend/public`
-  静的ファイル
-- `frontend/tests`
-  フロントエンドテスト
-- `frontend/.env.example`
-  フロントエンド用の環境変数サンプル
-- `frontend/biome.json`
-  `biome` の設定
-- `frontend/bun.lock`
-  `bun` 用のロックファイル
+- `google_oauth_connections`
+  - 暗号化済み `refresh_token`
+  - 許可済み scope
+  - access token の期限
+  - 接続状態
+- `google_oauth_states`
+  - OAuth callback 検証用の `state_hash`
+  - 有効期限
+  - 消費済み日時
 
-### `docs/`
+RLS は有効化し、`anon` / `authenticated` 向け policy は作りません。backend が `SUPABASE_SERVICE_ROLE_KEY` を使って保存します。
 
-作成したいアプリケーションの仕様書や補足資料を置く場所である。  
-この基盤リポジトリでは最小限の構成だけを用意し、詳細な中身は派生先で追加する想定である。
+## 暗号化
 
-### `supabase/`
+`refresh_token` は保存前に Python の `cryptography` ライブラリの Fernet で暗号化します。
 
-Supabase CLI と migration を配置する。
+- 暗号化キーは `TOKEN_ENCRYPTION_KEY` で管理する
+- 暗号化キーは Supabase に保存しない
+- 平文 `refresh_token` はDB、レスポンス、ログに出さない
+- 暗号化済み token を外部サーバへ返す API は作らない
 
-- `supabase/config.toml`
-  ローカル Supabase の設定
-- `supabase/migrations`
-  migration SQL の配置先
-- `supabase/seed.sql`
-  ローカル seed データ
+`TOKEN_ENCRYPTION_KEY` と Supabase 上の `encrypted_refresh_token` が両方漏れると復号できるため、secret管理には注意してください。
 
-### ルート
+## 環境変数
 
-- `.github/workflows/ci.yml`
-  GitHub Actions の CI 定義
-- `.github/pull_request_template.md`
-  PR テンプレート
-- `.editorconfig`
-  エディタ共通設定
-- `Makefile`
-  ローカル実行と補助コマンド
+`backend/.env.example` を参考に設定します。
 
-## 開発の進め方
+```env
+APP_ENV=development
 
-一般的には次の順で進める想定である。
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+GOOGLE_OAUTH_REDIRECT_URI=http://localhost:8000/api/oauth/google/callback
+GOOGLE_OAUTH_SCOPES=https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly
+GOOGLE_OAUTH_SYSTEM_NAME=GA4 / Search Console OAuth連携
+GOOGLE_OAUTH_OPERATION_NAME=Google OAuth認証
+GOOGLE_OAUTH_CONNECTION_KEY=internal_ga4_search_console
+GOOGLE_OAUTH_RESPONSIBLE_NAME=認証システム責任者
+GOOGLE_OAUTH_CONTACT=管理者
 
-1. `docker compose up --build` で起動確認する
-2. `make lint` で lint が通る状態を保つ
-3. `backend/app/domain` と `backend/app/services` に業務ロジックを追加する
-4. `frontend/src/features` に画面ごとの機能を追加する
-5. `docs/` に仕様や設計判断を残す
+TOKEN_ENCRYPTION_KEY=
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+OAUTH_STATE_TTL_SECONDS=86400
+```
 
-Docker を使わずに進めたい場合は、`make backend` と `make frontend` を別ターミナルで実行する。
+手動確認用に `GOOGLE_OAUTH_ENCRYPTED_REFRESH_TOKEN` もあります。確認後は `.env` から削除してください。
 
-## この基盤に含めていないもの
+## ローカル起動
 
-以下はアプリケーションごとに変わるため、このリポジトリでは固定していない。
+backend の依存関係を同期します。
 
-- 認証
-- リモート Supabase プロジェクト設定
-- ORM
-- UI ライブラリ
-- deploy 設定
-- lint / formatter の詳細ルール設計
+```bash
+cd backend
+uv sync --extra dev
+```
+
+Supabase を起動し、migration を適用します。
+
+```bash
+npx supabase start
+npx supabase db reset
+```
+
+backend を起動します。
+
+```bash
+cd backend
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+ブラウザで OAuth を開始します。
+
+```text
+http://localhost:8000/api/oauth/google/start
+```
+
+失敗画面だけ確認したい場合は、次のURLを開きます。
+
+```text
+http://localhost:8000/api/oauth/google/callback?error=access_denied
+```
+
+## 手動疎通確認
+
+Supabase に保存された `encrypted_refresh_token` を `backend/.env` の `GOOGLE_OAUTH_ENCRYPTED_REFRESH_TOKEN` に一時的に設定し、次を実行します。
+
+```bash
+cd backend
+uv run python scripts/check_google_oauth_connection.py
+```
+
+このスクリプトは token 値を表示しません。access token の再発行、Search Console sites、GA4 Admin accounts の疎通だけ確認します。
+
+## テスト
+
+```bash
+cd backend
+uv run --extra dev ruff check .
+uv run --extra dev pytest
+```
+
+現在のテストでは、state検証、token暗号化、レスポンスへのtoken非表示、本番での `/docs` 非公開などを確認しています。
+
+## デプロイ時の注意
+
+backend だけをデプロイすれば、現在のOAuthフローは動きます。frontend は必須ではありません。
+
+本番環境では必ず次を設定してください。
+
+```env
+APP_ENV=production
+GOOGLE_OAUTH_REDIRECT_URI=https://<backend-domain>/api/oauth/google/callback
+```
+
+`APP_ENV=production` の場合、FastAPI の自動ドキュメントは無効になります。
+
+```text
+/docs
+/redoc
+/openapi.json
+```
+
+Google Cloud Console には、本番の callback URL を redirect URI として登録してください。
+
+```text
+https://<backend-domain>/api/oauth/google/callback
+```
+
+## secret管理
+
+次の値はGit、README、Slack、メール、ログに出さないでください。
+
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `TOKEN_ENCRYPTION_KEY`
+- `GOOGLE_OAUTH_ENCRYPTED_REFRESH_TOKEN`
+
+本番では `.env` ファイルではなく、Vercel などのホスティングサービスの Environment Variables / Secrets 機能に設定します。
+
+## 仕様資料
+
+詳細は `docs/` を参照してください。
+
+- [実装仕様](docs/google-oauth-implementation-spec.md)
+- [詳細設計](docs/google-oauth-design.md)
+- [GA4 / Search Console OAuth説明](docs/google-oauth-ga4-search-console.md)
