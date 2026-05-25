@@ -2,12 +2,13 @@ from urllib.parse import urlencode
 
 import httpx
 
-from app.domain.google_oauth import GoogleTokenResponse
+from app.domain.google_oauth import GoogleTokenResponse, GoogleUserInfo
 
 
 class GoogleOAuthClient:
     authorization_endpoint = "https://accounts.google.com/o/oauth2/v2/auth"
     token_endpoint = "https://oauth2.googleapis.com/token"
+    userinfo_endpoint = "https://openidconnect.googleapis.com/v1/userinfo"
 
     def __init__(
         self,
@@ -55,3 +56,15 @@ class GoogleOAuthClient:
             scope=payload.get("scope", ""),
             token_type=payload.get("token_type", "Bearer"),
         )
+
+    async def fetch_userinfo(self, access_token: str) -> GoogleUserInfo:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                self.userinfo_endpoint,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            response.raise_for_status()
+
+        payload = response.json()
+        email = payload.get("email")
+        return GoogleUserInfo(email=email if isinstance(email, str) else None)

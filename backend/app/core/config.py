@@ -12,7 +12,8 @@ class Settings(BaseSettings):
     google_oauth_redirect_uri: str | None = None
     google_oauth_scopes: str = (
         "https://www.googleapis.com/auth/analytics.readonly "
-        "https://www.googleapis.com/auth/webmasters.readonly"
+        "https://www.googleapis.com/auth/webmasters.readonly "
+        "openid email"
     )
     google_oauth_system_name: str = "GA4 / Search Console OAuth連携"
     google_oauth_operation_name: str = "Google OAuth認証"

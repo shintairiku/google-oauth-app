@@ -59,6 +59,7 @@ class GoogleOAuthService:
 
         scopes = [scope for scope in token.scope.split() if scope]
         access_token_expires_at = now + timedelta(seconds=token.expires_in)
+        google_account_email = await self._fetch_google_account_email(token.access_token)
 
         if not token.refresh_token:
             try:
@@ -69,6 +70,7 @@ class GoogleOAuthService:
                         status="reauth_required",
                         token_type=token.token_type,
                         access_token_expires_at=access_token_expires_at,
+                        google_account_email=google_account_email,
                         error_reason="refresh_token_missing",
                     )
                 )
@@ -90,12 +92,20 @@ class GoogleOAuthService:
                     token_type=token.token_type,
                     access_token_expires_at=access_token_expires_at,
                     encrypted_refresh_token=encrypted_refresh_token,
+                    google_account_email=google_account_email,
                 )
             )
         except Exception:
             return failure("supabase_save_failed")
 
         return OAuthCallbackResult(success=True, scopes=scopes)
+
+    async def _fetch_google_account_email(self, access_token: str) -> str | None:
+        try:
+            userinfo = await self._google_client.fetch_userinfo(access_token)
+        except Exception:
+            return None
+        return userinfo.email
 
 
 def hash_state(state: str) -> str:

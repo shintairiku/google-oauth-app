@@ -111,3 +111,27 @@
 - 関連ファイル: backend/app/main.py, backend/tests/test_health.py, progress.md
 - 未解決事項: なし。
 - 次のアクション: Vercelなど本番環境では `APP_ENV=production` を設定する。
+
+## 2026-05-25 15:12
+- 変更内容: READMEをテンプレート説明からGoogle OAuth token保存用backendの説明へ更新した。目的、構成、API、保存先、暗号化、環境変数、ローカル起動、デプロイ時の注意、secret管理を整理した。
+- 目的: リポジトリの用途と運用上の注意点を、初めて読む人が把握できるようにするため。
+- 影響範囲: ドキュメントのみ。アプリケーションコード、DB schema、テストには変更なし。
+- 関連ファイル: README.md, progress.md
+- 未解決事項: なし。
+- 次のアクション: なし。
+
+## 2026-05-25 16:12
+- 変更内容: OAuth scopeに `openid email` を追加し、Google UserInfo endpointから取得したメールアドレスを `google_oauth_connections.google_account_email` に保存するようにした。関連テスト、README、仕様書も更新した。
+- 目的: Supabase上で、どのGoogleアカウントで認証した接続かを確認できるようにするため。
+- 影響範囲: Google OAuth scope、Google OAuth client、OAuth service、Supabase保存値、backendテスト、README、OAuth関連ドキュメント。
+- 関連ファイル: backend/app/core/config.py, backend/.env.example, backend/app/domain/google_oauth.py, backend/app/infrastructure/google_oauth_client.py, backend/app/services/google_oauth_service.py, backend/app/api/routes/google_oauth.py, backend/tests/test_google_oauth.py, README.md, docs/google-oauth-implementation-spec.md, docs/google-oauth-design.md, docs/google-oauth-ga4-search-console.md, progress.md
+- 未解決事項: なし。
+- 次のアクション: Vercelの `GOOGLE_OAUTH_SCOPES` に `openid email` を追加し、Google同意画面から再認証する。
+
+## 2026-05-25 16:16
+- 変更内容: OAuth callback成功画面に、Googleアカウント側の「サードパーティ製アプリとサービスへの接続」から連携解除できる旨を表示した。関連テスト、README、仕様書も更新した。
+- 目的: 接続解除APIを持たない初期実装でも、利用者が連携解除方法を画面上で確認できるようにするため。
+- 影響範囲: Google OAuth callback成功画面、backendテスト、README、OAuth関連ドキュメント。
+- 関連ファイル: backend/app/api/routes/google_oauth.py, backend/tests/test_google_oauth.py, README.md, docs/google-oauth-implementation-spec.md, docs/google-oauth-design.md, progress.md
+- 未解決事項: なし。
+- 次のアクション: なし。

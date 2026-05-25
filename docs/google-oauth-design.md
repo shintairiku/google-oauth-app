@@ -50,7 +50,7 @@ dependencies = [
 デフォルト値:
 
 ```text
-GOOGLE_OAUTH_SCOPES="https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly"
+GOOGLE_OAUTH_SCOPES="https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly openid email"
 GOOGLE_OAUTH_SYSTEM_NAME="GA4 / Search Console OAuth連携"
 GOOGLE_OAUTH_OPERATION_NAME="Google OAuth認証"
 GOOGLE_OAUTH_CONNECTION_KEY="internal_ga4_search_console"
@@ -110,6 +110,10 @@ class GoogleTokenResponse:
     refresh_token: str | None
     scope: str
     token_type: str
+
+@dataclass(frozen=True)
+class GoogleUserInfo:
+    email: str | None
 ```
 
 ### `services/token_cipher.py`
@@ -149,6 +153,8 @@ class GoogleOAuthClient:
 - `state`
 
 `exchange_code` は `POST https://oauth2.googleapis.com/token` を呼び出す。
+
+`fetch_userinfo` は `GET https://openidconnect.googleapis.com/v1/userinfo` を呼び出し、認証したGoogleアカウントのメールアドレスを取得する。メールアドレスは運用確認用の情報であり、暗号化せず `google_account_email` に保存する。
 
 ### `infrastructure/supabase_oauth_repository.py`
 
@@ -192,10 +198,11 @@ class GoogleOAuthService:
 2. `code` / `state` がなければ失敗結果を返す
 3. `state_hash` を生成し、Supabaseで検証・消費する
 4. Google token endpointで `code` をtokenへ交換する
-5. `refresh_token` がなければ `reauth_required` として保存する
-6. `refresh_token` があれば暗号化する
-7. `google_oauth_connections` にupsertする
-8. 成功結果を返す
+5. Google UserInfo endpointでメールアドレスを取得する
+6. `refresh_token` がなければ `reauth_required` として保存する
+7. `refresh_token` があれば暗号化する
+8. `google_oauth_connections` にupsertする
+9. 成功結果を返す
 
 ### `schemas/google_oauth.py`
 
@@ -267,6 +274,8 @@ state_hash = sha256(state.encode("utf-8")).hexdigest()
 <ul>
   <li>Google token responseで返されたscope</li>
 </ul>
+<h2>連携を解除したい場合</h2>
+<p>Googleアカウントの「サードパーティ製アプリとサービスへの接続」から、この連携のアクセス権を削除してください。</p>
 <dl>接続キー、責任者、問い合わせ先</dl>
 ```
 
@@ -320,12 +329,14 @@ unexpected_error
 - callbackで `state` が不正な場合、token交換しない
 - `refresh_token` がない場合、`reauth_required` として保存する
 - `refresh_token` がある場合、暗号化済み値だけ保存する
+- UserInfo endpointから取得したメールアドレスを保存する
 
 ### API test
 
 - `GET /api/oauth/google/start` がGoogle認証URLへリダイレクトする
 - `GET /api/oauth/google/callback?error=...` がシステム名、失敗した処理、要求していたscope、連絡先を含む失敗HTMLを返す
 - 成功callbackが実際に許可されたscopeと責任者情報を含む成功HTMLを返す
+- 成功callbackがGoogleアカウント側で連携解除できる旨を返す
 - レスポンスに `access_token`、`refresh_token`、暗号化済みtoken、client secretが含まれない
 
 ### 手動確認

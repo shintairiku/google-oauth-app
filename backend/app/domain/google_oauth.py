@@ -15,6 +15,11 @@ class GoogleTokenResponse:
 
 
 @dataclass(frozen=True)
+class GoogleUserInfo:
+    email: str | None
+
+
+@dataclass(frozen=True)
 class OAuthConnectionRecord:
     connection_key: str
     scopes: list[str]

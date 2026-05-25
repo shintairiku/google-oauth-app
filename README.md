@@ -13,6 +13,7 @@ GA4 / Search Console の読み取り権限を Google OAuth で取得し、`refre
 - `refresh_token` を暗号化する
 - 暗号化済み `refresh_token` を Supabase に保存する
 - 成功・失敗画面を backend から HTML で返す
+- 成功画面でGoogleアカウント側から連携解除できることを案内する
 - `.env` の暗号化済み token を使って、手動で Google API 疎通確認を行う
 
 ## 構成
@@ -59,6 +60,7 @@ Supabase に次のテーブルを作ります。
 
 - `google_oauth_connections`
   - 暗号化済み `refresh_token`
+  - 認証したGoogleアカウントのメールアドレス
   - 許可済み scope
   - access token の期限
   - 接続状態
@@ -90,7 +92,7 @@ APP_ENV=development
 GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 GOOGLE_OAUTH_REDIRECT_URI=http://localhost:8000/api/oauth/google/callback
-GOOGLE_OAUTH_SCOPES=https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly
+GOOGLE_OAUTH_SCOPES=https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly openid email
 GOOGLE_OAUTH_SYSTEM_NAME=GA4 / Search Console OAuth連携
 GOOGLE_OAUTH_OPERATION_NAME=Google OAuth認証
 GOOGLE_OAUTH_CONNECTION_KEY=internal_ga4_search_console
@@ -159,7 +161,7 @@ uv run --extra dev ruff check .
 uv run --extra dev pytest
 ```
 
-現在のテストでは、state検証、token暗号化、レスポンスへのtoken非表示、本番での `/docs` 非公開などを確認しています。
+現在のテストでは、state検証、token暗号化、メールアドレス保存、レスポンスへのtoken非表示、本番での `/docs` 非公開などを確認しています。
 
 ## デプロイ時の注意
 

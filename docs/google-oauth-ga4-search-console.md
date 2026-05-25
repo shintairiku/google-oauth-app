@@ -81,6 +81,8 @@ OAuthで中央のGoogleアカウントを認証すると、自社サービスは
 ```text
 https://www.googleapis.com/auth/analytics.readonly
 https://www.googleapis.com/auth/webmasters.readonly
+openid
+email
 ```
 
 これにより、GA4とSearch Consoleのデータを読む権限だけを要求します。設定変更や削除はできません。
@@ -236,7 +238,7 @@ grant_type=authorization_code
   "access_token": "...",
   "expires_in": 3599,
   "refresh_token": "...",
-  "scope": "https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly",
+  "scope": "https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly openid email",
   "token_type": "Bearer"
 }
 ```

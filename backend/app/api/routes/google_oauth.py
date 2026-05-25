@@ -21,6 +21,8 @@ SCOPE_LABELS = {
     "https://www.googleapis.com/auth/webmasters.readonly": (
         "Search Console の読み取り"
     ),
+    "openid": "Googleアカウント識別情報の取得",
+    "email": "Googleアカウントのメールアドレス取得",
 }
 
 
@@ -103,6 +105,14 @@ def render_success_html(scopes: list[str]) -> str:
               <ul>
                 {scope_items}
               </ul>
+            </div>
+
+            <div class="section">
+              <h2>連携を解除したい場合</h2>
+              <p class="note">
+                Googleアカウントの「サードパーティ製アプリとサービスへの接続」から、
+                この連携のアクセス権を削除してください。
+              </p>
             </div>
 
             <dl class="meta">
@@ -240,6 +250,11 @@ def base_styles() -> str:
     .lead {
       margin: 0 0 24px;
       color: #4b5563;
+      line-height: 1.75;
+    }
+    .note {
+      margin: 0;
+      color: #374151;
       line-height: 1.75;
     }
     .section {

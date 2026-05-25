@@ -6,7 +6,12 @@ from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 
 from app.api.routes.google_oauth import get_google_oauth_service
-from app.domain.google_oauth import GoogleTokenResponse, OAuthCallbackResult, OAuthConnectionRecord
+from app.domain.google_oauth import (
+    GoogleTokenResponse,
+    GoogleUserInfo,
+    OAuthCallbackResult,
+    OAuthConnectionRecord,
+)
 from app.infrastructure.google_oauth_client import GoogleOAuthClient
 from app.main import app
 from app.services.google_oauth_service import GoogleOAuthService, hash_state
@@ -45,6 +50,7 @@ class FakeGoogleClient:
             token_type="Bearer",
         )
         self.exchanged_codes: list[str] = []
+        self.userinfo_access_tokens: list[str] = []
 
     def build_authorization_url(self, state: str) -> str:
         return f"https://accounts.google.com/o/oauth2/v2/auth?state={state}"
@@ -52,6 +58,10 @@ class FakeGoogleClient:
     async def exchange_code(self, code: str) -> GoogleTokenResponse:
         self.exchanged_codes.append(code)
         return self.token_response
+
+    async def fetch_userinfo(self, access_token: str) -> GoogleUserInfo:
+        self.userinfo_access_tokens.append(access_token)
+        return GoogleUserInfo(email="oauth-user@example.com")
 
 
 class FakeRouteService:
@@ -165,7 +175,9 @@ def test_callback_saves_only_encrypted_refresh_token() -> None:
 
     assert result.success is True
     assert result.scopes == ["scope-a", "scope-b"]
+    assert google_client.userinfo_access_tokens == ["access-token"]
     assert repository.connections[-1].status == "connected"
+    assert repository.connections[-1].google_account_email == "oauth-user@example.com"
     encrypted_refresh_token = repository.connections[-1].encrypted_refresh_token
     assert encrypted_refresh_token is not None
     assert encrypted_refresh_token != "refresh-token"
@@ -202,6 +214,7 @@ def test_callback_without_refresh_token_saves_reauth_required() -> None:
     assert result.success is False
     assert result.error_reason == "refresh_token_missing"
     assert repository.connections[-1].status == "reauth_required"
+    assert repository.connections[-1].google_account_email == "oauth-user@example.com"
     assert repository.connections[-1].encrypted_refresh_token is None
 
 
@@ -228,6 +241,8 @@ def test_callback_success_response_shows_authorized_access_without_tokens() -> N
     assert "Google Analytics の読み取り" in response.text
     assert "Search Console の読み取り" in response.text
     assert "https://example.com/auth/custom.readonly" in response.text
+    assert "連携を解除したい場合" in response.text
+    assert "サードパーティ製アプリとサービスへの接続" in response.text
     assert "接続キー" in response.text
     assert "責任者" in response.text
     assert "問い合わせ先" in response.text
