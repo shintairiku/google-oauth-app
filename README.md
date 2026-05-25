@@ -71,6 +71,8 @@ Supabase に次のテーブルを作ります。
 
 RLS は有効化し、`anon` / `authenticated` 向け policy は作りません。backend が `SUPABASE_SERVICE_ROLE_KEY` を使って保存します。
 
+同じ用途の連携でも複数のGoogleアカウントを保持できます。保存時は `connection_key` と `google_account_email` の組み合わせで既存接続を更新します。
+
 ## 暗号化
 
 `refresh_token` は保存前に Python の `cryptography` ライブラリの Fernet で暗号化します。
@@ -152,6 +154,20 @@ uv run python scripts/check_google_oauth_connection.py
 ```
 
 このスクリプトは token 値を表示しません。access token の再発行、Search Console sites、GA4 Admin accounts の疎通だけ確認します。
+
+実データのサンプルを確認したい場合は、次を実行します。
+
+```bash
+cd backend
+uv run python scripts/inspect_google_oauth_data.py \
+  --days 28 \
+  --max-sites 10 \
+  --max-properties 10 \
+  --row-limit 20 \
+  --output tmp/google_oauth_data_sample.json
+```
+
+このスクリプトはSearch Consoleのサイト一覧・検索パフォーマンス、GA4のプロパティ一覧・サンプルレポートを取得します。平文tokenやaccess tokenは出力しません。
 
 ## テスト
 

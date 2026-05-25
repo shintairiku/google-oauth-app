@@ -84,7 +84,7 @@ class SupabaseOAuthRepository:
                     **self._headers,
                     "Prefer": "resolution=merge-duplicates,return=minimal",
                 },
-                params={"on_conflict": "connection_key"},
+                params={"on_conflict": "connection_key,google_account_email"},
                 json=payload,
             )
             response.raise_for_status()

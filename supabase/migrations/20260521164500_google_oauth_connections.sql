@@ -14,8 +14,8 @@ create table if not exists google_oauth_connections (
     check (status in ('connected', 'reauth_required', 'error'))
 );
 
-create unique index if not exists google_oauth_connections_connection_key_key
-  on google_oauth_connections (connection_key);
+create unique index if not exists google_oauth_connections_connection_key_google_account_email_key
+  on google_oauth_connections (connection_key, google_account_email);
 
 create table if not exists google_oauth_states (
   id uuid primary key default gen_random_uuid(),

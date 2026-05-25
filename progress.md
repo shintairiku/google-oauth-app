@@ -1,5 +1,29 @@
 # progress.md
 
+## 2026-05-25 18:03
+- 変更内容: OAuth接続の一意条件を `connection_key` 単体から `connection_key` と `google_account_email` の組み合わせへ変更した。Supabaseのupsert条件、初期migration、既存DB向け追加migration、仕様書、詳細設計、README、関連テストを更新した。
+- 目的: 同じOAuth用途でも複数のGoogleアカウントの暗号化済みrefresh tokenを同時に保持できるようにするため。
+- 影響範囲: Supabaseの `google_oauth_connections` unique index、Supabase REST upsert条件、OAuth接続保存仕様、backendテスト。
+- 関連ファイル: backend/app/infrastructure/supabase_oauth_repository.py, supabase/migrations/20260521164500_google_oauth_connections.sql, supabase/migrations/20260525180300_google_oauth_connections_unique_email.sql, backend/tests/test_google_oauth.py, docs/google-oauth-implementation-spec.md, docs/google-oauth-design.md, README.md, progress.md
+- 未解決事項: 既存Supabase環境では追加migrationの適用が必要。
+- 次のアクション: Supabase migrationを適用後、複数のGoogleアカウントでOAuth連携し、`google_oauth_connections` に複数行保存されることを確認する。
+
+## 2026-05-25 18:02
+- 変更内容: Search Console APIの行形式に合わせて手動確認スクリプトの表示整形を修正し、`keys`、`clicks`、`impressions`、`ctr`、`position` を表示するようにした。実行結果JSONを誤ってGit管理しないよう `backend/tmp/` をignoreした。関連テストも追加・更新した。
+- 目的: Search Consoleの取得結果が空配列のように見える誤表示を解消し、確認用出力ファイルの漏えいリスクを下げるため。
+- 影響範囲: 手動確認スクリプト、backendテスト、Git除外設定。
+- 関連ファイル: backend/scripts/inspect_google_oauth_data.py, backend/tests/test_inspect_google_oauth_data.py, .gitignore, progress.md
+- 未解決事項: GA4 Data APIはGoogle Cloud側で有効化が必要。
+- 次のアクション: Google Cloud Consoleで Google Analytics Data API を有効化後、手動確認スクリプトを再実行する。
+
+## 2026-05-25 17:55
+- 変更内容: 暗号化済みrefresh tokenを使ってGA4 / Search Consoleの実データを手動確認するスクリプトを追加した。Search Consoleのサイト一覧、検索パフォーマンス、GA4のaccount summaries、プロパティ別runReportを取得し、必要に応じてJSON保存できるようにした。あわせてネットワークを使わない単体テストとREADMEの実行例を追加した。
+- 目的: 保存済みOAuth tokenで、実際にGA4 / Search Consoleのデータを読み取れるかをローカルから確認できるようにするため。
+- 影響範囲: 手動確認スクリプト、backendテスト、README。
+- 関連ファイル: backend/scripts/inspect_google_oauth_data.py, backend/tests/test_inspect_google_oauth_data.py, README.md, progress.md
+- 未解決事項: 実データ取得は `.env` のGoogle OAuth設定とGoogle Cloud側のAPI有効化、対象アカウントの権限に依存する。
+- 次のアクション: `backend/.env` に暗号化済みrefresh tokenを設定し、`uv run python scripts/inspect_google_oauth_data.py --days 28 --max-sites 10 --max-properties 10 --row-limit 20 --output tmp/google_oauth_data_sample.json` を実行する。
+
 ## 2026-05-22 13:45
 - 変更内容: `.env` に暗号化済みrefresh tokenを設定してGoogle API疎通確認できる手動確認スクリプトを追加した。設定項目 `GOOGLE_OAUTH_ENCRYPTED_REFRESH_TOKEN` も追加した。
 - 目的: Supabaseから直接読むのではなく、暗号化済みtokenを明示的に `.env` へ設定して復号・access token再発行・Search Console / GA4 Admin API確認を行うため。

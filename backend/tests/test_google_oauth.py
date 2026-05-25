@@ -12,7 +12,9 @@ from app.domain.google_oauth import (
     OAuthCallbackResult,
     OAuthConnectionRecord,
 )
+from app.infrastructure import supabase_oauth_repository
 from app.infrastructure.google_oauth_client import GoogleOAuthClient
+from app.infrastructure.supabase_oauth_repository import SupabaseOAuthRepository
 from app.main import app
 from app.services.google_oauth_service import GoogleOAuthService, hash_state
 from app.services.token_cipher import TokenCipher
@@ -85,6 +87,28 @@ class FakeRouteService:
         error: str | None,
     ) -> OAuthCallbackResult:
         return self.result
+
+
+class FakeSupabaseResponse:
+    def raise_for_status(self) -> None:
+        return None
+
+
+class FakeSupabaseClient:
+    post_calls: list[dict[str, object]] = []
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        return None
+
+    async def __aenter__(self) -> "FakeSupabaseClient":
+        return self
+
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+    async def post(self, *args: object, **kwargs: object) -> FakeSupabaseResponse:
+        self.post_calls.append({"args": args, "kwargs": kwargs})
+        return FakeSupabaseResponse()
 
 
 def test_token_cipher_encrypts_and_decrypts() -> None:
@@ -216,6 +240,32 @@ def test_callback_without_refresh_token_saves_reauth_required() -> None:
     assert repository.connections[-1].status == "reauth_required"
     assert repository.connections[-1].google_account_email == "oauth-user@example.com"
     assert repository.connections[-1].encrypted_refresh_token is None
+
+
+def test_supabase_connection_upsert_uses_connection_key_and_email_conflict(
+    monkeypatch,
+) -> None:
+    FakeSupabaseClient.post_calls = []
+    monkeypatch.setattr(supabase_oauth_repository.httpx, "AsyncClient", FakeSupabaseClient)
+    repository = SupabaseOAuthRepository("https://example.supabase.co", "service-role-key")
+
+    asyncio.run(
+        repository.upsert_connection(
+            OAuthConnectionRecord(
+                connection_key="internal_ga4_search_console",
+                google_account_email="oauth-user@example.com",
+                scopes=["scope-a"],
+                status="connected",
+                token_type="Bearer",
+                access_token_expires_at=datetime.now(UTC),
+                encrypted_refresh_token="encrypted-refresh-token",
+            )
+        )
+    )
+
+    assert FakeSupabaseClient.post_calls[-1]["kwargs"]["params"] == {
+        "on_conflict": "connection_key,google_account_email"
+    }
 
 
 def test_start_route_redirects_to_google() -> None:

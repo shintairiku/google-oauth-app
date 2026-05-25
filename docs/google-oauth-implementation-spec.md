@@ -208,14 +208,14 @@ create table google_oauth_connections (
 
 `connection_key` は、このOAuth接続が何用の接続かを表す。初期実装では `internal_ga4_search_console` を使う。
 
-同じ `connection_key` の接続が既に存在する場合、再連携時は新規作成ではなく既存行を更新する。
+同じ `connection_key` と `google_account_email` の組み合わせが既に存在する場合、再連携時は新規作成ではなく既存行を更新する。これにより、同じ用途の連携でも複数のGoogleアカウントのtokenを同時に保持できる。
 
 ```sql
-create unique index google_oauth_connections_connection_key_key
-  on google_oauth_connections (connection_key);
+create unique index google_oauth_connections_connection_key_google_account_email_key
+  on google_oauth_connections (connection_key, google_account_email);
 ```
 
-`google_account_email` は、どのGoogleアカウントで同意したかを確認するための表示・監査用情報として扱う。接続の所有者や用途の判定には使わない。メールアドレスは暗号化せずに保存するが、個人情報として扱い、RLSとservice role keyの管理でフロントエンドから直接読ませない。
+`google_account_email` は、どのGoogleアカウントで同意したかを確認するための表示・監査用情報として扱う。同じ `connection_key` 内で接続を識別する保存キーにも使う。メールアドレスは暗号化せずに保存するが、個人情報として扱い、RLSとservice role keyの管理でフロントエンドから直接読ませない。
 
 `google_oauth_states` は、OAuth開始時に生成した `state` をcallback検証まで一時保存する。
 
