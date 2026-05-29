@@ -1,5 +1,13 @@
 # progress.md
 
+## 2026-05-29 14:30
+- 変更内容: OAuth callback画面のscope表示で、Google token responseが返す `https://www.googleapis.com/auth/userinfo.email` に日本語ラベルを表示するようにした。関連テストも更新した。
+- 目的: `email` scopeを要求した場合でも、Google側の返却値が `userinfo.email` URL形式になり、成功画面で説明なしのURLだけが表示される問題を解消するため。
+- 影響範囲: Google OAuth callback成功・失敗画面のscope表示、OAuth関連テスト。
+- 関連ファイル: backend/app/api/routes/google_oauth.py, backend/tests/test_google_oauth.py, progress.md
+- 未解決事項: なし。
+- 次のアクション: デプロイ後、外部GmailアカウントでOAuth成功画面のscope表示を確認する。
+
 ## 2026-05-25 18:03
 - 変更内容: OAuth接続の一意条件を `connection_key` 単体から `connection_key` と `google_account_email` の組み合わせへ変更した。Supabaseのupsert条件、初期migration、既存DB向け追加migration、仕様書、詳細設計、README、関連テストを更新した。
 - 目的: 同じOAuth用途でも複数のGoogleアカウントの暗号化済みrefresh tokenを同時に保持できるようにするため。

@@ -73,6 +73,7 @@ class FakeRouteService:
             scopes=[
                 "https://www.googleapis.com/auth/analytics.readonly",
                 "https://www.googleapis.com/auth/webmasters.readonly",
+                "https://www.googleapis.com/auth/userinfo.email",
                 "https://example.com/auth/custom.readonly",
             ],
         )
@@ -290,6 +291,8 @@ def test_callback_success_response_shows_authorized_access_without_tokens() -> N
     assert "許可されたscope" in response.text
     assert "Google Analytics の読み取り" in response.text
     assert "Search Console の読み取り" in response.text
+    assert "Googleアカウントのメールアドレス取得" in response.text
+    assert "https://www.googleapis.com/auth/userinfo.email" in response.text
     assert "https://example.com/auth/custom.readonly" in response.text
     assert "連携を解除したい場合" in response.text
     assert "サードパーティ製アプリとサービスへの接続" in response.text

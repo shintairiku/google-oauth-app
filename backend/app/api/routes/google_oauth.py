@@ -23,6 +23,9 @@ SCOPE_LABELS = {
     ),
     "openid": "Googleアカウント識別情報の取得",
     "email": "Googleアカウントのメールアドレス取得",
+    "https://www.googleapis.com/auth/userinfo.email": (
+        "Googleアカウントのメールアドレス取得"
+    ),
 }
 
 
